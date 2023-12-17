@@ -1,0 +1,62 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: external-dns-nifcloud-webhook
+  namespace: external-dns
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: external-dns-nifcloud-webhook
+  namespace: external-dns
+spec:
+  selector:
+    app: external-dns-nifcloud-webhook
+  ports:
+    - name: http
+      protocol: TCP
+      port: 8888
+      targetPort: 8888
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: nifcloud-secrets
+  namespace: external-dns
+stringData:
+  access_key: ""
+  secret_key: ""
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: external-dns-nifcloud-webhook
+  namespace: external-dns
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: external-dns-nifcloud-webhook
+  template:
+    metadata:
+      labels:
+        app: external-dns-nifcloud-webhook
+    spec:
+      serviceAccountName: external-dns-nifcloud-webhook
+      containers:
+        - name: webhook
+          image: ghcr.io/aokumasan/external-dns-nifcloud-webhook:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8888
+          env:
+            - name: NIFCLOUD_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: nifcloud-secrets
+                  key: access_key
+            - name: NIFCLOUD_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: nifcloud-secrets
+                  key: secret_key
